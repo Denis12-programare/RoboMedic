@@ -34,7 +34,9 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
         <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
           <h2>Something went wrong.</h2>
           <details style={{ whiteSpace: 'pre-wrap', textAlign: 'left' }}>
-            {this.state.error && this.state.error.toString()}
+            {this.state.error ? (
+              (this.state.error instanceof Error) ? this.state.error.toString() : JSON.stringify(this.state.error, null, 2)
+            ) : 'No error information available.'}
             <br />
             {this.state.errorInfo?.componentStack}
           </details>
