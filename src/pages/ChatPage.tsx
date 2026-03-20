@@ -15,9 +15,11 @@ import {
   Plus,
   Heart,
   Calendar,
-  Search
+  Search,
+  AlertCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { chatWithBot, uploadImage, getRecommendations, startConsultation, clearSession, getSessionId } from '../api';
 
 // --- Types ---
 interface Message {
@@ -25,8 +27,17 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
-  type?: 'text' | 'analysis' | 'recommendation';
+  type?: 'text' | 'analysis' | 'recommendation' | 'image_upload_prompt'; // Added image_upload_prompt
   data?: any;
+}
+
+interface AnalysisFindings {
+  findings: string[];
+}
+
+interface Recommendations {
+  products: string[];
+  routine: string[];
 }
 
 // --- Chat Page Component ---
@@ -41,7 +52,20 @@ const ChatPage: React.FC = () => {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionFound, setSessionFound] = useState<boolean>(false);
+  const [analysisFindings, setAnalysisFindings] = useState<AnalysisFindings | null>(null);
+  const [recommendations, setRecommendations] = useState<Recommendations | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Widget states - using dummy data for now, will be updated by API
+  const [skinScore, setSkinScore] = useState<number | null>(null);
+  const [hydration, setHydration] = useState<number | null>(null);
+  const [porosity, setPorosity] = useState<number | null>(null);
+
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref for hidden file input
   const navigate = useNavigate();
 
   const scrollToBottom = () => {
@@ -52,14 +76,135 @@ const ChatPage: React.FC = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Initial session check
+  useEffect(() => {
+    if (!getSessionId()) {
+      setSessionFound(false);
+      navigate('/login'); // Redirect to login if no session
+    } else {
+      setSessionFound(true);
+      // If session exists, try to load recommendations or previous chat history if applicable
+      // For now, just ensure the session is marked as found.
+      const fetchInitialData = async () => {
+        const response = await getRecommendations();
+        if (response.data) {
+          setRecommendations(response.data);
+          // Dummy data for skin score, hydration, porosity for now
+          setSkinScore(82);
+          setHydration(74);
+          setPorosity(12);
+        } else if (response.error) {
+          setError(response.error);
+        }
+      };
+      fetchInitialData();
+    }
+  }, [navigate]); // Only run once on mount
+
   const handleLogout = () => {
-    localStorage.removeItem('robo_auth');
+    clearSession(); // Clear session using the API utility
     navigate('/login');
   };
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleNewAnalysis = async () => {
+    setError(null);
+    setMessages([]); // Clear previous messages
+    setAnalysisFindings(null); // Clear previous findings
+    setRecommendations(null); // Clear previous recommendations
+    setSkinScore(null); // Clear previous skin score
+    setHydration(null); // Clear previous hydration
+    setPorosity(null); // Clear previous porosity
+
+    const initialBotMessage: Message = {
+      id: 'initial',
+      text: "Hello! I'm RoboMedic, your intelligent aesthetic assistant. How can I help you today? You can ask me about skincare routines, facial analysis, or specific skin concerns.",
+      sender: 'bot',
+      timestamp: new Date()
+    };
+    setMessages([initialBotMessage]);
+
+    const response = await startConsultation();
+    if (response.data?.session_id) {
+      setSessionFound(true);
+      // Optionally fetch initial recommendations if needed, though startConsultation doesn't return them
+      fetchRecommendations();
+    } else {
+      setError(response.error || 'Failed to start a new consultation.');
+      setSessionFound(false);
+    }
+  };
+
+  const fetchRecommendations = async () => {
+    setError(null);
+    const response = await getRecommendations();
+    if (response.data) {
+      setRecommendations(response.data);
+      // Update skin score and other metrics based on recommendations data if available
+      // For now, these are dummy values from initial state
+      setSkinScore(82);
+      setHydration(74);
+      setPorosity(12);
+    } else if (response.error) {
+      setError(response.error);
+    }
+  };
+
+  const handleImageUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    setUploadingImage(true);
+    // Add user message about uploading image
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      text: `Uploading image: ${file.name}...`,
+      sender: 'user',
+      timestamp: new Date(),
+      type: 'image_upload_prompt'
+    }]);
+
+    const response = await uploadImage(file);
+
+    if (response.data) {
+      setAnalysisFindings(response.data);
+      // Display bot message with findings for user validation
+      const findingsText = response.data.findings.length > 0
+        ? `I've detected the following: ${response.data.findings.join(', ')}. Do these look correct?`
+        : "I couldn't detect any specific issues. Is there anything particular you'd like me to analyze?";
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: findingsText,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'analysis',
+        data: response.data.findings
+      }]);
+    } else if (response.error) {
+      setError(response.error);
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        text: `Image analysis failed: ${response.error}`,
+        sender: 'bot',
+        timestamp: new Date(),
+        type: 'text'
+      }]);
+    }
+    setUploadingImage(false);
+    // Clear the input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
+    setError(null);
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -72,26 +217,35 @@ const ChatPage: React.FC = () => {
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
+    const response = await chatWithBot(userMsg.text);
+
+    if (response.data) {
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: getBotResponse(userMsg.text),
+        text: response.data.bot_message,
         sender: 'bot',
         timestamp: new Date()
       };
       setMessages(prev => [...prev, botMsg]);
-      setIsTyping(false);
-    }, 2000);
+      if (response.data.profile_updated) {
+        // Optionally refetch recommendations if profile was updated
+        fetchRecommendations(); 
+      }
+    } else if (response.error) {
+      setError(response.error);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: response.error, sender: 'bot', timestamp: new Date(), type: 'text' }]);
+    }
+    setIsTyping(false);
   };
 
-  const getBotResponse = (input: string): string => {
-    const text = input.toLowerCase();
-    if (text.includes('acne')) return "Based on your interest in acne, I recommend a routine focused on salicylic acid and non-comedogenic hydration. I've updated your 'Recommended Routine' widget with some options.";
-    if (text.includes('wrinkle') || text.includes('aging')) return "For concerns regarding fine lines or wrinkles, focus on retinoids and peptides. Ensure you use SPF 50 daily as prevention is key.";
-    if (text.includes('hello') || text.includes('hi')) return "Hello there! I'm ready to analyze your skin or provide beauty advice. Would you like to start a new face scan?";
-    return "That's an interesting question. To give you a more precise answer, would you like to upload a photo for a quick skin analysis?";
-  };
+  // getBotResponse is no longer needed as we're using the API
+  // const getBotResponse = (input: string): string => {
+  //   const text = input.toLowerCase();
+  //   if (text.includes('acne')) return "Based on your interest in acne, I recommend a routine focused on salicylic acid and non-comedogenic hydration. I've updated your 'Recommended Routine' widget with some options.";
+  //   if (text.includes('wrinkle') || text.includes('aging')) return "For concerns regarding fine lines or wrinkles, focus on retinoids and peptides. Ensure you use SPF 50 daily as prevention is key.";
+  //   if (text.includes('hello') || text.includes('hi')) return "Hello there! I'm ready to analyze your skin or provide beauty advice. Would you like to start a new face scan?";
+  //   return "That's an interesting question. To give you a more precise answer, would you like to upload a photo for a quick skin analysis?";
+  // };
 
   return (
     <div style={{ 
@@ -117,20 +271,24 @@ const ChatPage: React.FC = () => {
           <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>RoboMedic</span>
         </div>
 
-        <button style={{
-          width: '100%',
-          padding: '12px',
-          borderRadius: '12px',
-          background: 'rgba(6, 182, 212, 0.1)',
-          border: '1px solid rgba(6, 182, 212, 0.2)',
-          color: 'var(--primary)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          fontWeight: '600',
-          marginBottom: '24px',
-          cursor: 'pointer'
-        }}>
+        <button 
+          onClick={handleNewAnalysis}
+          disabled={isTyping || uploadingImage}
+          style={{
+            width: '100%',
+            padding: '12px',
+            borderRadius: '12px',
+            background: 'rgba(6, 182, 212, 0.1)',
+            border: '1px solid rgba(6, 182, 212, 0.2)',
+            color: 'var(--primary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: '600',
+            marginBottom: '24px',
+            cursor: 'pointer',
+            opacity: (isTyping || uploadingImage) ? 0.6 : 1
+          }}>
           <Plus size={20} />
           New Analysis
         </button>
@@ -172,6 +330,29 @@ const ChatPage: React.FC = () => {
 
       {/* Main Content Area */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+        {error && (
+            <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                style={{
+                    padding: '10px 20px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                    color: '#ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    borderBottom: '1px solid rgba(239, 68, 68, 0.4)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10
+                }}
+            >
+                <AlertCircle size={20} />
+                <span>{error}</span>
+            </motion.div>
+        )}
         {/* Header */}
         <header style={{
           height: '70px',
@@ -274,12 +455,25 @@ const ChatPage: React.FC = () => {
             gap: '12px',
             backdropFilter: 'var(--glass-blur)'
           }}>
-            <ImageIcon size={20} color="var(--text-muted)" style={{ cursor: 'pointer' }} />
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept="image/*" 
+              onChange={handleFileChange} 
+            />
+            <ImageIcon 
+              size={20} 
+              color="var(--text-muted)" 
+              style={{ cursor: 'pointer' }} 
+              onClick={handleImageUploadClick}
+            />
             <input 
               type="text" 
               placeholder="Ask RoboMedic about your skin..." 
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
+              disabled={uploadingImage}
               style={{
                 flex: 1,
                 background: 'transparent',
@@ -289,7 +483,7 @@ const ChatPage: React.FC = () => {
                 fontSize: '0.95rem'
               }}
             />
-            <button type="submit" style={{
+            <button type="submit" disabled={isTyping || uploadingImage} style={{
               width: '44px',
               height: '44px',
               borderRadius: '14px',
@@ -298,9 +492,20 @@ const ChatPage: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px var(--primary-glow)'
+              boxShadow: '0 4px 15px var(--primary-glow)',
+              opacity: (isTyping || uploadingImage) ? 0.6 : 1
             }}>
-              <Send size={20} />
+              {isTyping || uploadingImage ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  style={{ display: 'flex' }}
+                >
+                  <Sparkles size={20} />
+                </motion.div>
+              ) : (
+                <Send size={20} />
+              )}
             </button>
           </form>
         </div>
@@ -323,81 +528,97 @@ const ChatPage: React.FC = () => {
         </h3>
 
         {/* Skin Score Widget */}
-        <div style={{
-          padding: '24px',
-          borderRadius: '24px',
-          background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(139, 92, 246, 0.1))',
-          border: '1px solid rgba(255,255,255,0.05)',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: '600' }}>SKIN HEALTH SCORE</div>
-          <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 16px' }}>
-             <svg width="120" height="120" viewBox="0 0 120 120">
-                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
-                <motion.circle 
-                  cx="60" cy="60" r="54" fill="none" stroke="url(#gradient)" strokeWidth="8" 
-                  strokeDasharray="339.29"
-                  initial={{ strokeDashoffset: 339.29 }}
-                  animate={{ strokeDashoffset: 339.29 * (1 - 0.82) }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  strokeLinecap="round"
-                />
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="var(--primary)" />
-                    <stop offset="100%" stopColor="var(--secondary)" />
-                  </linearGradient>
-                </defs>
-             </svg>
-             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
-                <div style={{ fontSize: '1.8rem', fontWeight: '800' }}>82</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>EXCELLENT</div>
-             </div>
+        {skinScore !== null && (
+          <div style={{
+            padding: '24px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(139, 92, 246, 0.1))',
+            border: '1px solid rgba(255,255,255,0.05)',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px', fontWeight: '600' }}>SKIN HEALTH SCORE</div>
+            <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 16px' }}>
+               <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
+                  <motion.circle 
+                    cx="60" cy="60" r="54" fill="none" stroke="url(#gradient)" strokeWidth="8" 
+                    strokeDasharray="339.29"
+                    initial={{ strokeDashoffset: 339.29 }}
+                    animate={{ strokeDashoffset: 339.29 * (1 - (skinScore / 100)) }} // Use dynamic skinScore
+                    transition={{ duration: 1.5, ease: "easeOut" }}
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="var(--primary)" />
+                      <stop offset="100%" stopColor="var(--secondary)" />
+                    </linearGradient>
+                  </defs>
+               </svg>
+               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: '800' }}>{skinScore}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{skinScore && skinScore >= 80 ? 'EXCELLENT' : skinScore && skinScore >= 60 ? 'GOOD' : 'FAIR'}</div>
+               </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+               <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{hydration}%</div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HYDRATION</div>
+               </div>
+               <div style={{ width: '1px', height: '30px', background: 'var(--glass-border)' }} />
+               <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>{porosity}%</div>
+                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>POROSITY</div>
+               </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-             <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>74%</div>
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>HYDRATION</div>
-             </div>
-             <div style={{ width: '1px', height: '30px', background: 'var(--glass-border)' }} />
-             <div>
-                <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>12%</div>
-                <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>POROSITY</div>
-             </div>
-          </div>
-        </div>
+        )}
 
         {/* Routine Widget */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-             <h4 style={{ fontSize: '0.9rem', fontWeight: '700' }}>RECOMMENDED ROUTINE</h4>
-             <Calendar size={16} color="var(--text-muted)" />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-             {[
-               { icon: <Droplets size={16} />, title: 'Gentle Cleanser', time: 'Morning & Night' },
-               { icon: <Sparkles size={16} />, title: 'Vitamin C Serum', time: 'Morning' },
-               { icon: <Zap size={16} />, title: 'Retinol 0.5%', time: 'Night' },
-               { icon: <Heart size={16} />, title: 'SPF 50+ Shield', time: 'Daily' },
-             ].map((item, i) => (
-               <div key={i} style={{ 
-                 padding: '12px', 
-                 borderRadius: '14px', 
-                 background: 'rgba(255,255,255,0.02)', 
-                 border: '1px solid var(--glass-border)',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: '12px'
-               }}>
-                 <div style={{ color: 'var(--primary)' }}>{item.icon}</div>
-                 <div style={{ flex: 1 }}>
-                   <div style={{ fontSize: '0.85rem', fontWeight: '600' }}>{item.title}</div>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{item.time}</div>
+        {recommendations && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+               <h4 style={{ fontSize: '0.9rem', fontWeight: '700' }}>RECOMMENDED ROUTINE</h4>
+               <Calendar size={16} color="var(--text-muted)" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+               {recommendations?.products?.map((product, i) => (
+                 <div key={i} style={{ 
+                   padding: '12px', 
+                   borderRadius: '14px', 
+                   background: 'rgba(255,255,255,0.02)', 
+                   border: '1px solid var(--glass-border)',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '12px'
+                 }}>
+                   <div style={{ color: 'var(--primary)' }}><Droplets size={16} /></div> {/* Generic icon for products */}
+                   <div style={{ flex: 1 }}>
+                     <div style={{ fontSize: '0.85rem', fontWeight: '600' }}>{product}</div>
+                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Daily</div>
+                   </div>
                  </div>
-               </div>
-             ))}
+               ))}
+               {recommendations?.routine?.map((step, i) => (
+                 <div key={`routine-${i}`} style={{ 
+                   padding: '12px', 
+                   borderRadius: '14px', 
+                   background: 'rgba(255,255,255,0.02)', 
+                   border: '1px solid var(--glass-border)',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '12px'
+                 }}>
+                   <div style={{ color: 'var(--primary)' }}><Sparkles size={16} /></div> {/* Generic icon for routine steps */}
+                   <div style={{ flex: 1 }}>
+                     <div style={{ fontSize: '0.85rem', fontWeight: '600' }}>{step}</div>
+                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>As recommended</div>
+                   </div>
+                 </div>
+               ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Daily Tip */}
         <div style={{ 
