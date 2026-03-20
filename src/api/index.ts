@@ -56,13 +56,34 @@ async function callApi<T>(
     try {
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
+
+        const contentType = response.headers.get('content-type');
+        const isJson = contentType && contentType.includes('application/json');
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            return { error: errorData.detail || errorData.message || 'An unknown error occurred', statusCode: response.status };
+            let errorText: string;
+            if (isJson) {
+                const errorData = await response.json().catch(() => null);
+                errorText = errorData?.detail || errorData?.message || response.statusText;
+            } else {
+                errorText = await response.text();
+                if (errorText.startsWith('<!DOCTYPE html>')) {
+                    const titleMatch = errorText.match(/<title>(.*?)<\/title>/);
+                    errorText = titleMatch ? `Server Error: ${titleMatch[1]}` : `Server returned an HTML error page (Status: ${response.status})`;
+                } else {
+                    errorText = `Server error: ${errorText} (Status: ${response.status})`;
+                }
+            }
+            return { error: errorText || 'An unknown error occurred', statusCode: response.status };
         }
 
-        const data: T = await response.json();
-        return { data };
+        if (isJson) {
+            const data: T = await response.json();
+            return { data };
+        } else {
+            const rawText = await response.text();
+            return { error: `Expected JSON but received non-JSON response: ${rawText.substring(0, Math.min(rawText.length, 200))}... (Status: ${response.status})`, statusCode: response.status };
+        }
     } catch (error) {
         console.error("API call error:", error);
         return { error: (error instanceof Error ? error.message : String(error)) || 'Network error', statusCode: 0 };
