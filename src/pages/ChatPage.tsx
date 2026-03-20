@@ -59,13 +59,13 @@ const ChatPage: React.FC = () => {
   const [error, setInternalError] = useState<string | null>(null);
 
   const setError = (value: string | null) => {
-    console.log('setError received value:', value); // DEBUG LOG
+    console.log('ChatPage - setError received value:', value); // DEBUG LOG
     if (value === null) {
       setInternalError(null);
     } else if (typeof value === 'string') {
       setInternalError(value);
     } else {
-      console.warn('Attempted to set error state with a non-string value. Stringifying it.', value);
+      console.warn('ChatPage - Attempted to set error state with a non-string value. Stringifying it.', value);
       setInternalError(JSON.stringify(value));
     }
   };
@@ -100,6 +100,7 @@ const ChatPage: React.FC = () => {
       const fetchInitialData = async () => {
         const response = await getRecommendations();
         if (response.data) {
+          console.log('ChatPage - fetchInitialData - response.data:', response.data); // DEBUG LOG
           setRecommendations(response.data);
           // Dummy data for skin score, hydration, porosity for now
           setSkinScore(82);
@@ -115,7 +116,7 @@ const ChatPage: React.FC = () => {
 
 // Helper to ensure error message is always a string
   const getErrorMessage = (err: any): string => {
-    console.log('getErrorMessage input:', err); // DEBUG LOG
+    console.log('ChatPage - getErrorMessage input:', err); // DEBUG LOG
     if (typeof err === 'string') {
       return err;
     }
@@ -126,7 +127,7 @@ const ChatPage: React.FC = () => {
       return err.detail;
     }
     const result = JSON.stringify(err); // Ensure even unexpected objects are stringified
-    console.log('getErrorMessage output (stringified unexpected):', result); // DEBUG LOG
+    console.log('ChatPage - getErrorMessage output (stringified unexpected):', result); // DEBUG LOG
     return result;
   };
 
@@ -154,6 +155,7 @@ const ChatPage: React.FC = () => {
 
     const response = await startConsultation();
     if (response.data?.session_id) {
+      console.log('ChatPage - startConsultation - response.data:', response.data); // DEBUG LOG
       setSessionFound(true);
       // Optionally fetch initial recommendations if needed, though startConsultation doesn't return them
       fetchRecommendations();
@@ -167,6 +169,7 @@ const ChatPage: React.FC = () => {
     setError(null);
     const response = await getRecommendations();
     if (response.data) {
+      console.log('ChatPage - fetchRecommendations - response.data:', response.data); // DEBUG LOG
       setRecommendations(response.data);
       // Update skin score and other metrics based on recommendations data if available
       // For now, these are dummy values from initial state
@@ -200,6 +203,7 @@ const ChatPage: React.FC = () => {
     const response = await uploadImage(file);
 
     if (response.data) {
+      console.log('ChatPage - uploadImage - response.data:', response.data); // DEBUG LOG
       setAnalysisFindings(response.data);
       // Display bot message with findings for user validation
       const findingsText = response.data.findings.length > 0
@@ -249,6 +253,7 @@ const ChatPage: React.FC = () => {
     const response = await chatWithBot(userMsg.text);
 
     if (response.data) {
+      console.log('ChatPage - chatWithBot - response.data:', response.data); // DEBUG LOG
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         text: response.data.bot_message,
