@@ -56,7 +56,18 @@ const ChatPage: React.FC = () => {
   const [analysisFindings, setAnalysisFindings] = useState<AnalysisFindings | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendations | null>(null);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setInternalError] = useState<string | null>(null);
+
+  const setError = (value: string | null) => {
+    if (value === null) {
+      setInternalError(null);
+    } else if (typeof value === 'string') {
+      setInternalError(value);
+    } else {
+      console.warn('Attempted to set error state with a non-string value. Stringifying it.', value);
+      setInternalError(JSON.stringify(value));
+    }
+  };
 
   // Widget states - using dummy data for now, will be updated by API
   const [skinScore, setSkinScore] = useState<number | null>(null);
@@ -94,7 +105,7 @@ const ChatPage: React.FC = () => {
           setHydration(74);
           setPorosity(12);
         } else if (response.error) {
-          setError(response.error);
+          setError(getErrorMessage(response.error));
         }
       };
       fetchInitialData();
@@ -196,7 +207,7 @@ const ChatPage: React.FC = () => {
         sender: 'bot',
         timestamp: new Date(),
         type: 'analysis',
-        data: response.data.findings
+        data: response.data?.findings
       }]);
     } else if (response.error) {
       setError(getErrorMessage(response.error));
