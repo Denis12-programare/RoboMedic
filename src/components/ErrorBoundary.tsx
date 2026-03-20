@@ -23,12 +23,14 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // You can also log the error to an error reporting service
-    console.error("Uncaught error:", error, errorInfo);
+    console.error("Uncaught error in ErrorBoundary:", error, errorInfo); // DEBUG LOG
     this.setState({ errorInfo: errorInfo });
   }
 
   render() {
     if (this.state.hasError) {
+      console.log('ErrorBoundary rendering with error:', this.state.error); // DEBUG LOG
+      console.log('ErrorBoundary rendering with errorInfo:', this.state.errorInfo); // DEBUG LOG
       // You can render any custom fallback UI
       return (
         <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>

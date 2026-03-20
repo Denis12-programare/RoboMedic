@@ -59,6 +59,7 @@ const ChatPage: React.FC = () => {
   const [error, setInternalError] = useState<string | null>(null);
 
   const setError = (value: string | null) => {
+    console.log('setError received value:', value); // DEBUG LOG
     if (value === null) {
       setInternalError(null);
     } else if (typeof value === 'string') {
@@ -114,6 +115,7 @@ const ChatPage: React.FC = () => {
 
 // Helper to ensure error message is always a string
   const getErrorMessage = (err: any): string => {
+    console.log('getErrorMessage input:', err); // DEBUG LOG
     if (typeof err === 'string') {
       return err;
     }
@@ -123,7 +125,9 @@ const ChatPage: React.FC = () => {
     if (err && typeof err === 'object' && err.detail) {
       return err.detail;
     }
-    return 'An unexpected error occurred.';
+    const result = JSON.stringify(err); // Ensure even unexpected objects are stringified
+    console.log('getErrorMessage output (stringified unexpected):', result); // DEBUG LOG
+    return result;
   };
 
   const handleLogout = () => {
@@ -375,7 +379,7 @@ const ChatPage: React.FC = () => {
                 }}
             >
                 <AlertCircle size={20} />
-                <span>{error}</span>
+                <span>{typeof error === 'object' && error !== null ? JSON.stringify(error) : error}</span>
             </motion.div>
         )}
         {/* Header */}
