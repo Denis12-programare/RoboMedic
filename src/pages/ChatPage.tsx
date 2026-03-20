@@ -101,6 +101,20 @@ const ChatPage: React.FC = () => {
     }
   }, [navigate]); // Only run once on mount
 
+// Helper to ensure error message is always a string
+  const getErrorMessage = (err: any): string => {
+    if (typeof err === 'string') {
+      return err;
+    }
+    if (err && typeof err === 'object' && err.message) {
+      return err.message;
+    }
+    if (err && typeof err === 'object' && err.detail) {
+      return err.detail;
+    }
+    return 'An unexpected error occurred.';
+  };
+
   const handleLogout = () => {
     clearSession(); // Clear session using the API utility
     navigate('/login');
@@ -129,7 +143,7 @@ const ChatPage: React.FC = () => {
       // Optionally fetch initial recommendations if needed, though startConsultation doesn't return them
       fetchRecommendations();
     } else {
-      setError(response.error || 'Failed to start a new consultation.');
+      setError(getErrorMessage(response.error || 'Failed to start a new consultation.'));
       setSessionFound(false);
     }
   };
@@ -145,7 +159,7 @@ const ChatPage: React.FC = () => {
       setHydration(74);
       setPorosity(12);
     } else if (response.error) {
-      setError(response.error);
+      setError(getErrorMessage(response.error));
     }
   };
 
@@ -185,10 +199,10 @@ const ChatPage: React.FC = () => {
         data: response.data.findings
       }]);
     } else if (response.error) {
-      setError(response.error);
+      setError(getErrorMessage(response.error));
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
-        text: `Image analysis failed: ${response.error}`,
+        text: `Image analysis failed: ${getErrorMessage(response.error)}`,
         sender: 'bot',
         timestamp: new Date(),
         type: 'text'
@@ -232,8 +246,8 @@ const ChatPage: React.FC = () => {
         fetchRecommendations(); 
       }
     } else if (response.error) {
-      setError(response.error);
-      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: response.error, sender: 'bot', timestamp: new Date(), type: 'text' }]);
+      setError(getErrorMessage(response.error));
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: getErrorMessage(response.error), sender: 'bot', timestamp: new Date(), type: 'text' }]);
     }
     setIsTyping(false);
   };
