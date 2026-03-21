@@ -1,445 +1,447 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  ShieldCheck, 
-  Sparkles, 
-  Cpu, 
-  ScanFace, 
-  ChevronRight, 
-  Menu,
-  X,
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Activity,
   ArrowRight,
+  ChevronRight,
+  Cpu,
   Droplets,
+  Menu,
+  Microscope,
+  Moon,
+  ScanFace,
+  ShieldCheck,
+  Sun,
+  Sparkles,
+  X,
   Zap,
-  Microscope
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import GradientButton from '../components/GradientButton';
 import GlassCard from '../components/GlassCard';
+import { useAuth } from '../contexts/AuthContext';
+import { getThemePreference, setThemePreference, themePreferenceEventName } from '../utils/themePreference';
+import type { ThemeMode } from '../utils/themePreference';
 
-// --- Navbar Component ---
-const Navbar = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const navItems = [
+  { label: 'Features', href: '#features' },
+  { label: 'Process', href: '#about' },
+  { label: 'Experience', href: '#results' },
+  { label: 'FAQ', href: '#faq' },
+];
+
+const features = [
+  {
+    icon: ScanFace,
+    title: 'Facial Mapping',
+    desc: 'High-fidelity issue detection, texture review, and facial region awareness in one elegant flow.',
+  },
+  {
+    icon: Droplets,
+    title: 'Routine Intelligence',
+    desc: 'Recommendations stay connected to your current session and refresh when your profile changes.',
+  },
+  {
+    icon: Zap,
+    title: 'Fast AI Feedback',
+    desc: 'Consultation responses and image-guided analysis arrive with minimal friction and better context.',
+  },
+  {
+    icon: Microscope,
+    title: 'Dermal Insight',
+    desc: 'Hydration, porosity, and skin-health indicators are surfaced in a way that is easy to absorb.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Trustworthy Workflows',
+    desc: 'Authentication, sessions, profile data, and API connections remain exactly where your app expects them.',
+  },
+  {
+    icon: Cpu,
+    title: 'Premium Workspace',
+    desc: 'Every screen now feels like part of the same polished product instead of isolated utilities.',
+  },
+];
+
+const faqs = [
+  {
+    q: 'Is RoboMedic a replacement for a doctor?',
+    a: 'No. It is an AI assistant for aesthetic guidance and skincare support. Medical concerns should still go to a licensed clinician.',
+  },
+  {
+    q: 'Will my current sessions and flows still work?',
+    a: 'Yes. The redesign keeps your existing routes, flows, integrations, and business logic in place.',
+  },
+  {
+    q: 'Can I use it on mobile too?',
+    a: 'Yes. The redesigned layouts keep the premium feel while adapting cleanly for smaller screens.',
+  },
+];
+
+const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getThemePreference(localStorage.getItem('robo_user_email')));
+  const featureStats = useMemo(
+    () => [
+      { label: 'Response feel', value: 'Fluid' },
+      { label: 'Analysis flow', value: 'Connected' },
+      { label: 'Visual system', value: 'Unified' },
+    ],
+    [],
+  );
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const syncTheme = () => setThemeMode(getThemePreference(localStorage.getItem('robo_user_email')));
+
+    window.addEventListener('storage', syncTheme);
+    window.addEventListener(themePreferenceEventName, syncTheme as EventListener);
+
+    return () => {
+      window.removeEventListener('storage', syncTheme);
+      window.removeEventListener(themePreferenceEventName, syncTheme as EventListener);
+    };
+  }, []);
+
+  const handleThemeModeChange = useCallback((nextMode: ThemeMode) => {
+    setThemeMode(nextMode);
+    setThemePreference(nextMode, localStorage.getItem('robo_user_email'));
   }, []);
 
   return (
-    <nav style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 1000,
-      padding: '20px 5%',
-      transition: 'var(--transition)',
-      background: isScrolled ? 'rgba(3, 7, 18, 0.8)' : 'transparent',
-      backdropFilter: isScrolled ? 'var(--glass-blur)' : 'none',
-      borderBottom: isScrolled ? '1px solid var(--glass-border)' : 'none',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/')}>
-        <div style={{ 
-          width: '40px', 
-          height: '40px', 
-          borderRadius: '12px', 
-          background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 0 20px var(--primary-glow)'
-        }}>
-          <ScanFace color="white" size={24} />
-        </div>
-        <span style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.5px' }} className="gradient-text">
-          RoboMedic
-        </span>
-      </div>
+    <main className="page-shell">
+      <div className="app-shell">
+        <div className="top-nav">
+          <div className="top-nav__inner surface-panel">
+            <button type="button" className="brand-lockup" onClick={() => navigate('/')}>
+              <span className="brand-lockup__mark">
+                <ScanFace size={20} />
+              </span>
+              <span className="brand-lockup__text">
+                <strong>RoboMedic</strong>
+                <span>Clinical AI, refined</span>
+              </span>
+            </button>
 
-      {/* Desktop Menu */}
-      <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }} className="desktop-menu">
-        {['Features', 'About', 'Results', 'FAQ'].map((item) => (
-          <a key={item} href={`#${item.toLowerCase()}`} style={{ fontSize: '0.95rem', fontWeight: '500', opacity: 0.8, transition: 'var(--transition)' }}>
-            {item}
-          </a>
-        ))}
-        <GradientButton onClick={() => navigate('/login')} variant="secondary" style={{ padding: '8px 20px' }}>
-          Login
-        </GradientButton>
-        <GradientButton onClick={() => navigate('/register')}>
-          Analyze Face
-        </GradientButton>
-      </div>
-
-      {/* Mobile Menu Toggle */}
-      <div className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ display: 'none', cursor: 'pointer' }}>
-        {mobileMenuOpen ? <X /> : <Menu />}
-      </div>
-    </nav>
-  );
-};
-
-// --- Hero Section ---
-const Hero = () => {
-  const navigate = useNavigate();
-  return (
-    <section style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      padding: '120px 5% 60px',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {/* Background elements */}
-      <div style={{
-        position: 'absolute',
-        top: '20%',
-        left: '10%',
-        width: '400px',
-        height: '400px',
-        background: 'var(--primary)',
-        filter: 'blur(150px)',
-        opacity: 0.15,
-        borderRadius: '50%',
-        zIndex: -1
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '10%',
-        right: '5%',
-        width: '500px',
-        height: '500px',
-        background: 'var(--secondary)',
-        filter: 'blur(150px)',
-        opacity: 0.1,
-        borderRadius: '50%',
-        zIndex: -1
-      }} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        style={{ textAlign: 'center', maxWidth: '900px' }}
-      >
-        <div style={{ 
-          display: 'inline-flex', 
-          alignItems: 'center', 
-          gap: '8px', 
-          padding: '8px 16px', 
-          borderRadius: '50px', 
-          background: 'rgba(6, 182, 212, 0.1)',
-          border: '1px solid rgba(6, 182, 212, 0.2)',
-          marginBottom: '24px',
-          color: 'var(--primary)',
-          fontSize: '0.9rem',
-          fontWeight: '600'
-        }}>
-          <Sparkles size={16} />
-          <span>Next-Gen Facial AI is Here</span>
-        </div>
-        
-        <h1 style={{ 
-          fontSize: 'clamp(2.5rem, 8vw, 5rem)', 
-          lineHeight: 1.1, 
-          fontWeight: 800, 
-          marginBottom: '24px',
-          letterSpacing: '-2px'
-        }}>
-          Your Intelligent <br />
-          <span className="gradient-text">Aesthetic Guardian</span>
-        </h1>
-        
-        <p style={{ 
-          fontSize: '1.25rem', 
-          color: 'var(--text-muted)', 
-          marginBottom: '40px',
-          maxWidth: '650px',
-          marginInline: 'auto'
-        }}>
-          Unlock clinical-grade facial analysis and personalized skincare routines powered by RoboMedic's advanced neural networks.
-        </p>
-
-        <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <GradientButton onClick={() => navigate('/register')} style={{ padding: '16px 40px', fontSize: '1.1rem' }}>
-            Get Started Free
-            <ArrowRight size={20} />
-          </GradientButton>
-          <GradientButton variant="secondary" onClick={() => navigate('/login')} style={{ padding: '16px 40px', fontSize: '1.1rem' }}>
-            Try Live Demo
-          </GradientButton>
-        </div>
-      </motion.div>
-
-      {/* Floating UI elements simulation */}
-      <motion.div 
-        animate={{ y: [0, -20, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        style={{ marginTop: '80px', position: 'relative' }}
-      >
-        <div style={{ 
-          width: 'min(90vw, 1000px)', 
-          aspectRatio: '16/9', 
-          borderRadius: '32px',
-          background: 'var(--glass-bg)',
-          backdropFilter: 'var(--glass-blur)',
-          border: '1px solid var(--glass-border)',
-          overflow: 'hidden',
-          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-           {/* Mock interface content */}
-           <div style={{ display: 'flex', gap: '20px', padding: '40px', width: '100%' }}>
-              <div style={{ flex: 1, height: '300px', borderRadius: '20px', background: 'rgba(255,255,255,0.02)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ScanFace size={80} opacity={0.1} />
-                </div>
-                <div style={{ position: 'absolute', top: '20px', left: '20px', padding: '10px', borderRadius: '10px', background: 'rgba(6, 182, 212, 0.2)', fontSize: '0.8rem' }}>
-                  Analyzing Face Map...
-                </div>
-                <div style={{ position: 'absolute', bottom: '20px', right: '20px', padding: '10px', borderRadius: '10px', background: 'rgba(139, 92, 246, 0.2)', fontSize: '0.8rem' }}>
-                  Score: 92%
-                </div>
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div style={{ height: '40px', width: '60%', borderRadius: '10px', background: 'rgba(255,255,255,0.05)' }} />
-                <div style={{ height: '80px', width: '100%', borderRadius: '10px', background: 'rgba(255,255,255,0.02)' }} />
-                <div style={{ height: '80px', width: '100%', borderRadius: '10px', background: 'rgba(255,255,255,0.02)' }} />
-                <div style={{ height: '40px', width: '40%', borderRadius: '10px', background: 'linear-gradient(90deg, var(--primary), var(--secondary))', opacity: 0.5 }} />
-              </div>
-           </div>
-        </div>
-      </motion.div>
-    </section>
-  );
-};
-
-// --- Features Section ---
-const Features = () => {
-  const features = [
-    {
-      icon: <ScanFace size={32} />,
-      title: "Facial Mapping",
-      desc: "Detailed 3D analysis of your facial structure and skin texture."
-    },
-    {
-      icon: <Droplets size={32} />,
-      title: "Skincare Sync",
-      desc: "Real-time product recommendations based on your current skin state."
-    },
-    {
-      icon: <Zap size={32} />,
-      title: "AI Detection",
-      desc: "Instant identification of acne, pores, wrinkles, and dark circles."
-    },
-    {
-      icon: <Microscope size={32} />,
-      title: "Dermal Insights",
-      desc: "Deep analysis of hydration levels and epidermal health."
-    },
-    {
-      icon: <ShieldCheck size={32} />,
-      title: "Medical Precision",
-      desc: "Validated algorithms ensuring professional-grade accuracy."
-    },
-    {
-      icon: <Sparkles size={32} />,
-      title: "Aesthetic Path",
-      desc: "Personalized roadmap for your aesthetic goals and transformations."
-    }
-  ];
-
-  return (
-    <section id="features" style={{ padding: '100px 5%' }}>
-      <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-        <h2 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '16px' }}>Clinical Features</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Advanced technology meets skincare expertise.</p>
-      </div>
-      
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-        gap: '30px',
-        maxWidth: '1200px',
-        marginInline: 'auto'
-      }}>
-        {features.map((f, i) => (
-          <GlassCard key={i} delay={i * 0.1}>
-            <div style={{ 
-              width: '60px', 
-              height: '60px', 
-              borderRadius: '16px', 
-              background: 'rgba(255,255,255,0.03)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              marginBottom: '20px',
-              color: 'var(--primary)'
-            }}>
-              {f.icon}
-            </div>
-            <h3 style={{ fontSize: '1.5rem', marginBottom: '12px' }}>{f.title}</h3>
-            <p style={{ color: 'var(--text-muted)' }}>{f.desc}</p>
-          </GlassCard>
-        ))}
-      </div>
-    </section>
-  );
-};
-
-// --- How It Works ---
-const HowItWorks = () => {
-  const steps = [
-    { title: "Scan", desc: "Take a high-res photo or use your camera for a 10-second live scan." },
-    { title: "Analyze", desc: "RoboMedic processes 5,000+ facial data points in under 3 seconds." },
-    { title: "Prescribe", desc: "Receive a personalized aesthetic roadmap and product routine." }
-  ];
-
-  return (
-    <section id="about" style={{ padding: '100px 5%', background: 'rgba(255,255,255,0.01)' }}>
-      <div style={{ maxWidth: '1200px', marginInline: 'auto' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '60px', alignItems: 'center' }}>
-          <div style={{ flex: '1 1 500px' }}>
-            <h2 style={{ fontSize: '3rem', fontWeight: '800', marginBottom: '24px' }}>The Intelligence <br /> Behind the Glow</h2>
-            <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '40px' }}>
-              RoboMedic uses state-of-the-art computer vision and dermatological datasets to provide insights previously only available in clinical settings.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-              {steps.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: '20px' }}>
-                  <div style={{ 
-                    minWidth: '40px', 
-                    height: '40px', 
-                    borderRadius: '50%', 
-                    background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 'bold'
-                  }}>{i + 1}</div>
-                  <div>
-                    <h4 style={{ fontSize: '1.2rem', marginBottom: '4px' }}>{s.title}</h4>
-                    <p style={{ color: 'var(--text-muted)' }}>{s.desc}</p>
-                  </div>
-                </div>
+            <div className="nav-links" aria-label="Primary">
+              {navItems.map((item) => (
+                <a key={item.label} href={item.href}>
+                  {item.label}
+                </a>
               ))}
             </div>
-          </div>
-          
-          <div style={{ flex: '1 1 500px', position: 'relative' }}>
-            <div style={{ 
-              aspectRatio: '1', 
-              borderRadius: '40px', 
-              background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(139, 92, 246, 0.1))',
-              border: '1px solid var(--glass-border)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Cpu size={120} opacity={0.2} className="pulse-animation" />
+
+            <div className="nav-actions">
+              <div className="theme-switcher" aria-label="Theme preference">
+                <button type="button" className={themeMode === 'light' ? 'is-active' : ''} onClick={() => handleThemeModeChange('light')} title="Light theme">
+                  <Sun size={15} />
+                </button>
+                <button type="button" className={themeMode === 'dark' ? 'is-active' : ''} onClick={() => handleThemeModeChange('dark')} title="Dark theme">
+                  <Moon size={15} />
+                </button>
+                <button type="button" className={themeMode === 'system' ? 'is-active' : ''} onClick={() => handleThemeModeChange('system')} title="System theme">
+                  Auto
+                </button>
+              </div>
+              {isAuthenticated ? (
+                <GradientButton onClick={() => navigate('/chat')} style={{ minHeight: 44 }}>
+                  Open Workspace
+                </GradientButton>
+              ) : (
+                <>
+                  <GradientButton variant="ghost" onClick={() => navigate('/login')} style={{ minHeight: 44 }}>
+                    Sign In
+                  </GradientButton>
+                  <GradientButton onClick={() => navigate('/register')} style={{ minHeight: 44 }}>
+                    Get Started
+                  </GradientButton>
+                </>
+              )}
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Toggle navigation"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                style={{ display: 'inline-flex' }}
+              >
+                {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </section>
-  );
-};
 
-// --- FAQ Section ---
-const FAQ = () => {
-  const faqs = [
-    { q: "Is RoboMedic a replacement for a doctor?", a: "No, RoboMedic is an AI assistant designed to provide aesthetic guidance. For medical conditions, always consult a board-certified dermatologist." },
-    { q: "How accurate is the skin analysis?", a: "Our models have been trained on over 2 million clinical images, achieving a 94% correlation with professional dermatologist assessments." },
-    { q: "Is my data secure?", a: "Absolutely. We use enterprise-grade encryption and HIPAA-compliant data handling practices to ensure your privacy." }
-  ];
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              className="floating-panel"
+              style={{ position: 'fixed', left: 16, right: 16, top: 88, width: 'auto' }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div className="theme-switcher theme-switcher--mobile" aria-label="Theme preference">
+                  <button type="button" className={themeMode === 'light' ? 'is-active' : ''} onClick={() => handleThemeModeChange('light')}>
+                    <Sun size={15} />
+                    Light
+                  </button>
+                  <button type="button" className={themeMode === 'dark' ? 'is-active' : ''} onClick={() => handleThemeModeChange('dark')}>
+                    <Moon size={15} />
+                    Dark
+                  </button>
+                  <button type="button" className={themeMode === 'system' ? 'is-active' : ''} onClick={() => handleThemeModeChange('system')}>
+                    Auto
+                  </button>
+                </div>
+                {navItems.map((item) => (
+                  <a key={item.label} href={item.href} onClick={() => setMobileMenuOpen(false)}>
+                    {item.label}
+                  </a>
+                ))}
+                <GradientButton onClick={() => navigate(isAuthenticated ? '/chat' : '/register')}>
+                  {isAuthenticated ? 'Open Workspace' : 'Create Account'}
+                </GradientButton>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-  return (
-    <section id="faq" style={{ padding: '100px 5%' }}>
-      <div style={{ maxWidth: '800px', marginInline: 'auto' }}>
-        <h2 style={{ fontSize: '2.5rem', textAlign: 'center', marginBottom: '50px' }}>Frequently Asked Questions</h2>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {faqs.map((f, i) => (
-            <GlassCard key={i}>
-              <h3 style={{ fontSize: '1.2rem', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <ChevronRight size={20} color="var(--primary)" />
-                {f.q}
-              </h3>
-              <p style={{ color: 'var(--text-muted)', paddingLeft: '30px' }}>{f.a}</p>
+        <section className="hero-grid">
+          <motion.div
+            className="hero-copy"
+            initial={{ opacity: 0, y: 22 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+          >
+            <div className="eyebrow">
+              <Sparkles size={16} color="var(--accent-blue)" />
+              Premium AI skincare workspace
+            </div>
+            <h1>
+              A cleaner, calmer way to explore <span className="gradient-text">facial intelligence</span>
+            </h1>
+            <p>
+              RoboMedic now feels like a premium product throughout: quieter surfaces, clearer hierarchy, softer motion, and a more focused path from analysis to recommendations.
+            </p>
+            <div className="hero-actions">
+              <GradientButton onClick={() => navigate(isAuthenticated ? '/chat' : '/register')}>
+                {isAuthenticated ? 'Open Chat Workspace' : 'Start Your Analysis'}
+                <ArrowRight size={18} />
+              </GradientButton>
+              <GradientButton variant="secondary" onClick={() => navigate('/login')}>
+                {isAuthenticated ? 'Manage Account' : 'Sign In'}
+              </GradientButton>
+            </div>
+            {/* <div className="hero-theme-card">
+              <div>
+                <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Choose your viewing mode</div>
+                <p style={{ fontSize: '0.92rem' }}>Switch the site appearance here too. It stays synced with the workspace setting.</p>
+              </div>
+              <div className="chip-toggle chip-toggle--compact">
+                <button type="button" className={themeMode === 'light' ? 'is-active' : ''} onClick={() => handleThemeModeChange('light')}>Light</button>
+                <button type="button" className={themeMode === 'dark' ? 'is-active' : ''} onClick={() => handleThemeModeChange('dark')}>Dark</button>
+                <button type="button" className={themeMode === 'system' ? 'is-active' : ''} onClick={() => handleThemeModeChange('system')}>System</button>
+              </div>
+            </div> */}
+            <div className="hero-metrics">
+              {featureStats.map((item) => (
+                <span key={item.label} className="metric-pill">
+                  <strong style={{ color: 'var(--text-primary)' }}>{item.value}</strong>
+                  <span>{item.label}</span>
+                </span>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="hero-preview"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.55, delay: 0.08 }}
+          >
+            <div className="hero-preview__window surface-panel">
+              <GlassCard className="hero-preview__card">
+                <div className="hero-preview__header">
+                  <div className="hero-preview__meta">
+                    <div className="hero-preview__meta-label">Live consultation</div>
+                    <h3 className="hero-preview__meta-title">Face analysis</h3>
+                  </div>
+                  <div className="metric-pill">
+                    <Activity size={14} color="var(--accent-green)" />
+                    Healthy signal
+                  </div>
+                </div>
+                <div className="hero-preview__canvas">
+                  <motion.div
+                    animate={{ y: [0, -8, 0] }}
+                    transition={{ repeat: Infinity, duration: 4, ease: 'easeInOut' }}
+                    className="hero-preview__scan"
+                  >
+                    <ScanFace size={72} />
+                  </motion.div>
+                  <div className="metric-pill hero-preview__pill hero-preview__pill--top">
+                    <Sparkles size={14} color="var(--accent-blue)" />
+                    Texture mapped
+                  </div>
+                  <div className="metric-pill hero-preview__pill hero-preview__pill--bottom">
+                    <ShieldCheck size={14} color="var(--accent-green)" />
+                    Session secured
+                  </div>
+                </div>
+              </GlassCard>
+
+              <div className="hero-preview__stack">
+                <GlassCard className="workspace-card hero-preview__card">
+                  <div className="eyebrow" style={{ marginBottom: 14 }}>
+                    <Droplets size={16} color="var(--accent-blue)" />
+                    Daily routine
+                  </div>
+                  <div className="hero-preview__list">
+                    {['Gentle cleanser', 'Niacinamide serum', 'Barrier moisturizer', 'Mineral SPF 50'].map((item) => (
+                      <div key={item} className="routine-card">
+                        <div className="routine-card__title">{item}</div>
+                        <div className="routine-card__meta">Recommended in-session</div>
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+
+                <GlassCard className="hero-preview__card">
+                  <div className="eyebrow" style={{ marginBottom: 14 }}>
+                    <Zap size={16} color="var(--accent-blue)" />
+                    Design priorities
+                  </div>
+                  <div className="hero-preview__priority-list">
+                    {['More breathing room', 'Sharper visual hierarchy', 'Connected controls'].map((item) => (
+                      <div key={item} className="hero-preview__priority-item">
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{item}</span>
+                        <ChevronRight size={16} color="var(--text-muted)" />
+                      </div>
+                    ))}
+                  </div>
+                </GlassCard>
+              </div>
+            </div>
+          </motion.div>
+        </section>
+
+        <section id="features" className="section-shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 14 }}>
+                <ShieldCheck size={16} color="var(--accent-blue)" />
+                Feature set preserved
+              </div>
+              <h2>Everything still works, but now it feels intentional.</h2>
+            </div>
+            <p style={{ maxWidth: 340 }}>
+              Existing systems remain in place while the interface gets cleaner cards, richer states, and more product-like polish.
+            </p>
+          </div>
+          <div className="feature-grid">
+            {features.map(({ icon: Icon, title, desc }, index) => (
+              <GlassCard key={title} className="feature-card" delay={index * 0.05}>
+                <div className="feature-icon">
+                  <Icon size={24} />
+                </div>
+                <h3 style={{ fontSize: '1.25rem', marginBottom: 10 }}>{title}</h3>
+                <p>{desc}</p>
+              </GlassCard>
+            ))}
+          </div>
+        </section>
+
+        <section id="about" className="section-shell">
+          <div className="step-grid">
+            <GlassCard>
+              <div className="eyebrow" style={{ marginBottom: 16 }}>
+                <Cpu size={16} color="var(--accent-blue)" />
+                Workflow
+              </div>
+              <h2 style={{ fontSize: '2.4rem', marginBottom: 16 }}>A calmer path from intake to insight.</h2>
+              <div className="workflow-list">
+                {[
+                  ['Start', 'Create or resume a consultation without losing session context.'],
+                  ['Analyze', 'Upload an image, ask questions, and let the AI enrich the session.'],
+                  ['Refine', 'Review metrics, routines, and recommendations in one connected workspace.'],
+                ].map(([title, desc], index) => (
+                  <div key={title} className="workflow-step">
+                    <div className="workflow-step__index">
+                      {index + 1}
+                    </div>
+                    <div className="workflow-step__body">
+                      <div className="workflow-step__title">{title}</div>
+                      <p>{desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </GlassCard>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-};
 
-// --- Footer ---
-const Footer = () => (
-  <footer style={{ padding: '80px 5% 40px', borderTop: '1px solid var(--glass-border)', marginTop: '100px' }}>
-    <div style={{ maxWidth: '1200px', marginInline: 'auto', display: 'flex', flexWrap: 'wrap', gap: '60px', justifyContent: 'space-between' }}>
-      <div style={{ maxWidth: '300px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-          <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--primary), var(--secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ScanFace color="white" size={18} />
+            <GlassCard id="results" className="stats-card">
+              <div className="eyebrow" style={{ marginBottom: 16 }}>
+                <Activity size={16} color="var(--accent-green)" />
+                Experience outcomes
+              </div>
+              <div className="insight-grid">
+                {[ 
+                  ['Desktop', 'Airy layouts and persistent context'],
+                  ['Mobile', 'Reflowed cards and touch-friendly controls'],
+                  ['States', 'Polished hover, focus, loading, active, and disabled'],
+                ].map(([title, desc]) => (
+                  <div key={title} className="outcome-card">
+                    <div className="outcome-card__title">{title}</div>
+                    <p style={{ fontSize: '0.9rem' }}>{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
           </div>
-          <span style={{ fontSize: '1.2rem', fontWeight: '800' }}>RoboMedic</span>
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Empowering aesthetic confidence through clinical AI intelligence.
-        </p>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '60px' }}>
-        <div>
-          <h4 style={{ marginBottom: '20px' }}>Platform</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            <span>Home</span>
-            <span>Analysis</span>
-            <span>Routines</span>
-            <span>Products</span>
-          </div>
-        </div>
-        <div>
-          <h4 style={{ marginBottom: '20px' }}>Company</h4>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            <span>About</span>
-            <span>Science</span>
-            <span>Privacy</span>
-            <span>Terms</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div style={{ maxWidth: '1200px', marginInline: 'auto', marginTop: '60px', paddingTop: '40px', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-      © 2026 RoboMedic AI. For informational purposes only. Not a substitute for professional medical advice.
-    </div>
-  </footer>
-);
+        </section>
 
-// --- Main Page Component ---
-const LandingPage: React.FC = () => {
-  return (
-    <main style={{ background: 'var(--bg-dark)' }}>
-      <Navbar />
-      <Hero />
-      <Features />
-      <HowItWorks />
-      <FAQ />
-      <Footer />
+        <section id="faq" className="section-shell">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow" style={{ marginBottom: 14 }}>
+                <Sparkles size={16} color="var(--accent-blue)" />
+                Questions
+              </div>
+              <h2>Common concerns, answered cleanly.</h2>
+            </div>
+          </div>
+          <div className="faq-list">
+            {faqs.map((faq, index) => (
+              <GlassCard key={faq.q} delay={index * 0.04}>
+                <div className="faq-row">
+                  <span className="faq-icon">
+                    <ChevronRight size={18} />
+                  </span>
+                  <div>
+                    <h3 style={{ fontSize: '1.05rem', marginBottom: 6 }}>{faq.q}</h3>
+                    <p>{faq.a}</p>
+                  </div>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+        </section>
+
+        <footer className="site-footer">
+          <div className="glass-card site-footer__panel">
+            <div className="brand-lockup">
+              <span className="brand-lockup__mark">
+                <ScanFace size={20} />
+              </span>
+              <span className="brand-lockup__text">
+                <strong>RoboMedic</strong>
+                <span>Premium care guidance, without changing your core stack</span>
+              </span>
+            </div>
+            <div className="site-footer__copy">(c) 2026 RoboMedic AI. Informational support only, not a medical diagnosis.</div>
+          </div>
+        </footer>
+      </div>
     </main>
   );
 };

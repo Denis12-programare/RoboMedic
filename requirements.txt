@@ -1,9 +1,9 @@
 fastapi
 uvicorn
-groq
-google-genai
+openai
 python-dotenv
 python-multipart
 pydantic
 pydantic-settings
 pillow
+passlib[bcrypt]
