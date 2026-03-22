@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 class Settings(BaseSettings):
-    FEATHERLESS_API_KEY: str = "rc_ab67858ff6c206aba4b48f49024317a6c19ae35e75bc289002a44de447a27b25"
+    FEATHERLESS_API_KEY: str = None
     FEATHERLESS_BASE_URL: str = "https://api.featherless.ai/v1"
     FEATHERLESS_DEFAULT_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
     FEATHERLESS_FAST_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
